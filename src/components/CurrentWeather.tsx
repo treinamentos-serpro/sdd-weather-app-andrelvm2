@@ -21,7 +21,7 @@ interface CurrentWeatherProps {
 }
 
 function formatMetric(value: number | null, suffix: string): string {
-  return value === null ? 'Indisponível' : `${value} ${suffix}`;
+  return value === null || !Number.isFinite(value) ? '—' : `${value} ${suffix}`;
 }
 
 export default function CurrentWeather({ city, current, unit }: CurrentWeatherProps) {
@@ -51,7 +51,7 @@ export default function CurrentWeather({ city, current, unit }: CurrentWeatherPr
           </span>
           <div>
             <p className="break-words text-4xl font-bold leading-none sm:text-7xl">
-              {temperature === null ? 'Indisponível' : `${temperature} ${temperatureUnit}`}
+              {temperature === null ? '—' : `${temperature} ${temperatureUnit}`}
             </p>
             <p className="mt-3 text-lg text-slate-200">{weatherCondition.label}</p>
           </div>

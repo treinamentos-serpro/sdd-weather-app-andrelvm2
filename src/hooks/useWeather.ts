@@ -12,6 +12,14 @@ interface WeatherState {
 
 type LastOperation = { type: 'search'; name: string } | { type: 'selectCity'; city: City };
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof WeatherServiceError) {
+    return error.message;
+  }
+
+  return 'Não foi possível concluir a consulta. Verifique sua conexão e tente novamente.';
+}
+
 const initialState: WeatherState = {
   status: 'idle',
   query: '',
@@ -58,12 +66,17 @@ export function useWeather() {
         return;
       }
 
-      const message =
-        error instanceof WeatherServiceError
-          ? error.message
-          : 'Não foi possível consultar o clima. Tente novamente.';
-
-      setState({ status: 'error', query: name, cities: [], data: null, error: message });
+      setState({
+        status: 'error',
+        query: name,
+        cities: [],
+        data: null,
+        error: getErrorMessage(error),
+      });
+    } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+      }
     }
   }, []);
 
@@ -100,18 +113,17 @@ export function useWeather() {
         return;
       }
 
-      const message =
-        error instanceof WeatherServiceError
-          ? error.message
-          : 'Não foi possível consultar o clima. Tente novamente.';
-
       setState((currentState) => ({
         status: 'error',
         query: currentState.query,
         cities: currentState.cities,
         data: null,
-        error: message,
+        error: getErrorMessage(error),
       }));
+    } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+      }
     }
   }, []);
 

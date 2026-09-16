@@ -19,8 +19,8 @@ interface ForecastCardProps {
 function formatTemperature(value: number | null, unit: TemperatureUnit): string {
   const temperature = displayTemperature(value, unit);
 
-  if (temperature === null) {
-    return 'Indisponível';
+  if (temperature === null || !Number.isFinite(temperature)) {
+    return '—';
   }
 
   return `${temperature} ${unit === 'celsius' ? '°C' : '°F'}`;
@@ -30,7 +30,9 @@ export default function ForecastCard({ day, index, unit }: ForecastCardProps) {
   const weatherCondition = getWeatherCondition(day.weatherCode);
   const dayLabel = formatForecastDay(day.date, index);
   const rainChance =
-    day.precipitationProbability === null ? 'Indisponível' : `${day.precipitationProbability}%`;
+    day.precipitationProbability === null || !Number.isFinite(day.precipitationProbability)
+      ? '—'
+      : `${day.precipitationProbability}%`;
 
   return (
     <article

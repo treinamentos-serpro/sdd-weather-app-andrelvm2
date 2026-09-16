@@ -71,6 +71,27 @@ describe('searchCities', () => {
     await expect(searchCities('Sao Paulo')).resolves.toEqual([]);
   });
 
+  it('retorna vazio quando o geocoding responde explicitamente sem resultados', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ results: [] }), { status: 200 })),
+    );
+
+    await expect(searchCities('Cidade inexistente')).resolves.toEqual([]);
+  });
+
+  it('codifica caracteres especiais na consulta de geocoding', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ results: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await searchCities('São José-dos Campos');
+
+    const url = new URL(fetchMock.mock.calls[0][0] as string);
+    expect(url.searchParams.get('name')).toBe('São José-dos Campos');
+  });
+
   it('lança WeatherServiceError quando a resposta não é ok', async () => {
     vi.stubGlobal(
       'fetch',
@@ -79,7 +100,8 @@ describe('searchCities', () => {
 
     await expect(searchCities('Sao Paulo')).rejects.toMatchObject({
       name: 'WeatherServiceError',
-      message: 'Não foi possível consultar o clima. Tente novamente.',
+      kind: 'api',
+      message: 'O serviço de clima está indisponível no momento. Tente novamente em instantes.',
     });
   });
 });
@@ -155,7 +177,8 @@ describe('getWeather', () => {
 
     await expect(getWeather(city)).rejects.toMatchObject({
       name: 'WeatherServiceError',
-      message: 'Não foi possível consultar o clima. Tente novamente.',
+      kind: 'api',
+      message: 'O serviço de clima está indisponível no momento. Tente novamente em instantes.',
     });
   });
 
@@ -215,6 +238,56 @@ describe('getWeather', () => {
     ]);
   });
 
+  it('normaliza campos ausentes, nulos e não finitos sem expor valores inválidos', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            current: {
+              temperature_2m: null,
+              relative_humidity_2m: 'invalid',
+              wind_speed_10m: Number.NaN,
+              weather_code: null,
+            },
+            daily: {
+              temperature_2m_max: [Number.POSITIVE_INFINITY, null],
+              precipitation_probability_max: [40],
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const weather = await getWeather(city);
+
+    expect(weather.current).toEqual({
+      temperature: null,
+      humidity: null,
+      windSpeed: null,
+      precipitation: 0,
+      pressure: null,
+      weatherCode: null,
+    });
+    expect(weather.forecast).toEqual([
+      {
+        date: '',
+        min: null,
+        max: null,
+        weatherCode: null,
+        precipitationProbability: 40,
+      },
+      {
+        date: '',
+        min: null,
+        max: null,
+        weatherCode: null,
+        precipitationProbability: null,
+      },
+    ]);
+  });
+
   it('converte abort por timeout em WeatherServiceError', async () => {
     vi.useFakeTimers();
     vi.stubGlobal(
@@ -232,7 +305,8 @@ describe('getWeather', () => {
     const request = getWeather(city);
     const expectedError = expect(request).rejects.toMatchObject({
       name: 'WeatherServiceError',
-      message: 'A requisição demorou demais.',
+      kind: 'timeout',
+      message: 'A consulta demorou mais de 10 segundos. Verifique sua conexão e tente novamente.',
     });
     await vi.advanceTimersByTimeAsync(10_000);
 
@@ -244,7 +318,29 @@ describe('getWeather', () => {
 
     await expect(getWeather(city)).rejects.toMatchObject({
       name: 'WeatherServiceError',
-      message: 'Falha de rede.',
+      kind: 'network',
+      message:
+        'Não foi possível conectar ao serviço de clima. Verifique sua conexão e tente novamente.',
     });
+  });
+
+  it('preserva o cancelamento externo sem classificá-lo como timeout', async () => {
+    const abortController = new AbortController();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(
+        (_url: string, options: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            options.signal?.addEventListener('abort', () => {
+              reject(new DOMException('', 'AbortError'));
+            });
+          }),
+      ),
+    );
+
+    const request = getWeather(city, abortController.signal);
+    abortController.abort();
+
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' });
   });
 });

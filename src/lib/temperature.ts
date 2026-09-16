@@ -1,7 +1,7 @@
 export type TemperatureUnit = 'celsius' | 'fahrenheit';
 
 export function displayTemperature(celsius: number | null, unit: TemperatureUnit): number | null {
-  if (celsius === null) {
+  if (celsius === null || !Number.isFinite(celsius)) {
     return null;
   }
 

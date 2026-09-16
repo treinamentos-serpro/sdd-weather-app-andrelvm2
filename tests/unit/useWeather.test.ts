@@ -84,4 +84,29 @@ describe('useWeather', () => {
     expect(result.current.data).toBeNull();
     expect(getWeather).not.toHaveBeenCalled();
   });
+
+  it('exibe erro amigável offline e repete a última busca no retry', async () => {
+    const searchCities = vi
+      .spyOn(weatherService, 'searchCities')
+      .mockRejectedValueOnce(new TypeError('NetworkError'))
+      .mockResolvedValueOnce([]);
+    const { result } = renderHook(() => useWeather());
+
+    await act(async () => {
+      await result.current.search('Recife');
+    });
+
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toBe(
+      'Não foi possível concluir a consulta. Verifique sua conexão e tente novamente.',
+    );
+
+    await act(async () => {
+      await result.current.retry();
+    });
+
+    expect(searchCities).toHaveBeenNthCalledWith(1, 'Recife', expect.any(AbortSignal));
+    expect(searchCities).toHaveBeenNthCalledWith(2, 'Recife', expect.any(AbortSignal));
+    expect(result.current.status).toBe('empty');
+  });
 });

@@ -7,6 +7,10 @@ export function formatForecastDay(date: string, index: number): string {
     return 'Amanhã';
   }
 
+  if (!date || Number.isNaN(Date.parse(`${date}T12:00:00Z`))) {
+    return 'Data indisponível';
+  }
+
   return new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'UTC',
     weekday: 'long',

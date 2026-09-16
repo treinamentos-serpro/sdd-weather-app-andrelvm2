@@ -52,6 +52,6 @@ describe('ForecastList', () => {
 
     expect(screen.getAllByRole('article')).toHaveLength(1);
     expect(screen.getByRole('article', { name: 'Hoje: Céu limpo' })).toBeInTheDocument();
-    expect(screen.getAllByText('Indisponível')).toHaveLength(3);
+    expect(screen.getAllByText('—')).toHaveLength(3);
   });
 });
