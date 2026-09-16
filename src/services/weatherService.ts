@@ -130,7 +130,7 @@ export async function getWeather(city: City, signal?: AbortSignal): Promise<Weat
       temperature: payload.current.temperature_2m ?? null,
       humidity: payload.current.relative_humidity_2m ?? null,
       windSpeed: payload.current.wind_speed_10m ?? null,
-      precipitation: payload.current.precipitation ?? null,
+      precipitation: payload.current.precipitation ?? 0,
       pressure: payload.current.pressure_msl ?? null,
       weatherCode: payload.current.weather_code ?? null,
     },

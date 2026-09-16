@@ -41,4 +41,12 @@ describe('CurrentWeather', () => {
 
     expect(screen.getAllByText('Indisponível')).toHaveLength(2);
   });
+
+  it('sinaliza a temperatura ausente como indisponível', () => {
+    render(
+      <CurrentWeather city={city} current={{ ...current, temperature: null }} unit="celsius" />,
+    );
+
+    expect(screen.getByText('Indisponível')).toBeInTheDocument();
+  });
 });

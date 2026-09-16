@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { vi } from 'vitest';
+import CurrentWeather from '../../src/components/CurrentWeather';
 import UnitToggle from '../../src/components/UnitToggle';
 
 describe('UnitToggle', () => {
@@ -40,5 +42,39 @@ describe('UnitToggle', () => {
 
     expect(onChange).toHaveBeenCalledWith('fahrenheit');
     expect(fahrenheitButton).toHaveFocus();
+  });
+
+  it('atualiza a temperatura exibida ao selecionar Fahrenheit', async () => {
+    const user = userEvent.setup();
+
+    function WeatherWithUnitToggle() {
+      const [unit, setUnit] = useState<'celsius' | 'fahrenheit'>('celsius');
+
+      return (
+        <>
+          <UnitToggle onChange={setUnit} unit={unit} />
+          <CurrentWeather
+            city={{ name: 'Recife' }}
+            current={{
+              temperature: 0,
+              humidity: 80,
+              windSpeed: 10,
+              precipitation: 0,
+              pressure: 1015,
+              weatherCode: 0,
+            }}
+            unit={unit}
+          />
+        </>
+      );
+    }
+
+    render(<WeatherWithUnitToggle />);
+
+    expect(screen.getByText('0 °C')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Fahrenheit' }));
+
+    expect(screen.getByText('32 °F')).toBeInTheDocument();
   });
 });

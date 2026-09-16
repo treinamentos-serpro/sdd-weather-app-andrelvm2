@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getWeather, WeatherServiceError } from '../../src/services/weatherService';
+import { getWeather, searchCities, WeatherServiceError } from '../../src/services/weatherService';
 import type { City } from '../../src/types/weather';
 
 const city: City = {
@@ -14,6 +14,74 @@ const city: City = {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+});
+
+describe('searchCities', () => {
+  it('retorna vazio sem chamar fetch quando a entrada está vazia', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(searchCities('   ')).resolves.toEqual([]);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('mapeia os resultados da geocodificação', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              id: 1,
+              name: 'Sao Paulo',
+              country: 'Brasil',
+              admin1: 'Sao Paulo',
+              latitude: -23.55,
+              longitude: -46.63,
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(searchCities('Sao Paulo')).resolves.toEqual([
+      {
+        id: 1,
+        name: 'Sao Paulo',
+        country: 'Brasil',
+        admin1: 'Sao Paulo',
+        latitude: -23.55,
+        longitude: -46.63,
+      },
+    ]);
+
+    const url = new URL(fetchMock.mock.calls[0][0] as string);
+    expect(url.searchParams.get('name')).toBe('Sao Paulo');
+    expect(url.searchParams.get('count')).toBe('5');
+  });
+
+  it('retorna vazio quando results está ausente', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 })),
+    );
+
+    await expect(searchCities('Sao Paulo')).resolves.toEqual([]);
+  });
+
+  it('lança WeatherServiceError quando a resposta não é ok', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('{}', { status: 500, statusText: 'Server Error' })),
+    );
+
+    await expect(searchCities('Sao Paulo')).rejects.toMatchObject({
+      name: 'WeatherServiceError',
+      message: 'Não foi possível consultar o clima. Tente novamente.',
+    });
+  });
 });
 
 describe('getWeather', () => {
@@ -80,6 +148,71 @@ describe('getWeather', () => {
     );
 
     await expect(getWeather(city)).rejects.toBeInstanceOf(WeatherServiceError);
+  });
+
+  it('lança WeatherServiceError quando o forecast retorna resposta não ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 503 })));
+
+    await expect(getWeather(city)).rejects.toMatchObject({
+      name: 'WeatherServiceError',
+      message: 'Não foi possível consultar o clima. Tente novamente.',
+    });
+  });
+
+  it('converte precipitação null para zero', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            current: { precipitation: null },
+            daily: { time: [] },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const weather = await getWeather(city);
+
+    expect(weather.current.precipitation).toBe(0);
+  });
+
+  it('preserva os dias e sinaliza campos diários ausentes como null', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            current: { temperature_2m: 22 },
+            daily: {
+              time: ['2026-09-16', '2026-09-17'],
+              temperature_2m_max: [25],
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const weather = await getWeather(city);
+
+    expect(weather.forecast).toEqual([
+      {
+        date: '2026-09-16',
+        min: null,
+        max: 25,
+        weatherCode: null,
+        precipitationProbability: null,
+      },
+      {
+        date: '2026-09-17',
+        min: null,
+        max: null,
+        weatherCode: null,
+        precipitationProbability: null,
+      },
+    ]);
   });
 
   it('converte abort por timeout em WeatherServiceError', async () => {
