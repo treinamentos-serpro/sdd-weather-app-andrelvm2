@@ -10,6 +10,8 @@ interface WeatherState {
   error: string | null;
 }
 
+type LastOperation = { type: 'search'; name: string } | { type: 'selectCity'; city: City };
+
 const initialState: WeatherState = {
   status: 'idle',
   query: '',
@@ -21,13 +23,13 @@ const initialState: WeatherState = {
 export function useWeather() {
   const [state, setState] = useState<WeatherState>(initialState);
   const abortRef = useRef<AbortController | null>(null);
-  const lastQueryRef = useRef('');
+  const lastOperationRef = useRef<LastOperation | null>(null);
 
   const search = useCallback(async (name: string) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    lastQueryRef.current = name;
+    lastOperationRef.current = { type: 'search', name };
 
     setState({ status: 'loading', query: name, cities: [], data: null, error: null });
 
@@ -65,11 +67,65 @@ export function useWeather() {
     }
   }, []);
 
-  const retry = useCallback(() => {
-    if (lastQueryRef.current) {
-      void search(lastQueryRef.current);
-    }
-  }, [search]);
+  const selectCity = useCallback(async (city: City) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    lastOperationRef.current = { type: 'selectCity', city };
 
-  return { ...state, search, retry };
+    setState((currentState) => ({
+      status: 'loading',
+      query: currentState.query,
+      cities: currentState.cities,
+      data: null,
+      error: null,
+    }));
+
+    try {
+      const data = await getWeather(city, controller.signal);
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      setState((currentState) => ({
+        status: 'success',
+        query: currentState.query,
+        cities: currentState.cities,
+        data,
+        error: null,
+      }));
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      const message =
+        error instanceof WeatherServiceError
+          ? error.message
+          : 'Não foi possível consultar o clima. Tente novamente.';
+
+      setState((currentState) => ({
+        status: 'error',
+        query: currentState.query,
+        cities: currentState.cities,
+        data: null,
+        error: message,
+      }));
+    }
+  }, []);
+
+  const retry = useCallback(async () => {
+    const lastOperation = lastOperationRef.current;
+
+    if (lastOperation?.type === 'search') {
+      await search(lastOperation.name);
+    }
+
+    if (lastOperation?.type === 'selectCity') {
+      await selectCity(lastOperation.city);
+    }
+  }, [search, selectCity]);
+
+  return { ...state, search, selectCity, retry };
 }

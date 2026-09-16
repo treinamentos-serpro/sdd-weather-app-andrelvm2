@@ -32,10 +32,10 @@ async function fetchWithTimeout(url: string, signal?: AbortSignal): Promise<Resp
     }
 
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new WeatherServiceError('A requisição demorou demais. Tente novamente.');
+      throw new WeatherServiceError('A requisição demorou demais.');
     }
 
-    throw new WeatherServiceError('Falha de rede. Verifique sua conexão e tente novamente.');
+    throw new WeatherServiceError('Falha de rede.');
   } finally {
     clearTimeout(timeoutId);
     signal?.removeEventListener('abort', forwardAbort);

@@ -55,4 +55,54 @@ describe('App', () => {
 
     expect(screen.getAllByText('82 °F')).toHaveLength(2);
   });
+
+  it('renderiza loading enquanto a busca está em andamento', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(weatherService, 'searchCities').mockImplementation(() => new Promise(() => undefined));
+
+    render(<App />);
+
+    await user.type(screen.getByRole('searchbox', { name: 'Pesquisar localidade' }), 'Recife');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Carregando informações meteorológicas...',
+    );
+  });
+
+  it('renderiza empty quando a busca não encontra localidades', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(weatherService, 'searchCities').mockResolvedValue([]);
+
+    render(<App />);
+
+    await user.type(screen.getByRole('searchbox', { name: 'Pesquisar localidade' }), 'Inexistente');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Nenhuma localidade encontrada' }),
+    ).toBeVisible();
+  });
+
+  it('renderiza erro e chama retry ao tentar novamente', async () => {
+    const user = userEvent.setup();
+    const searchCities = vi
+      .spyOn(weatherService, 'searchCities')
+      .mockRejectedValueOnce(new weatherService.WeatherServiceError('Falha de rede.'))
+      .mockResolvedValueOnce([]);
+
+    render(<App />);
+
+    await user.type(screen.getByRole('searchbox', { name: 'Pesquisar localidade' }), 'Recife');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falha de rede.');
+
+    await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Nenhuma localidade encontrada' }),
+    ).toBeVisible();
+    expect(searchCities).toHaveBeenCalledTimes(2);
+  });
 });
