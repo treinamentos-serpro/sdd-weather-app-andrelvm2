@@ -37,7 +37,7 @@ const weatherConditions: Record<number, WeatherCondition> = {
 const unavailableCondition: WeatherCondition = { label: 'Indisponível', icon: '?' };
 
 export function getWeatherCondition(weatherCode: number | null): WeatherCondition {
-  if (weatherCode === null) {
+  if (weatherCode === null || !Number.isFinite(weatherCode)) {
     return unavailableCondition;
   }
 

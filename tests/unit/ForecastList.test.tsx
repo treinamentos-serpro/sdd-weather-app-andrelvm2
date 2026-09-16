@@ -41,4 +41,17 @@ describe('ForecastList', () => {
 
     expect(screen.getAllByRole('article')).toHaveLength(5);
   });
+
+  it('mantém o card e sinaliza dados diários ausentes', () => {
+    render(
+      <ForecastList
+        forecast={[{ ...forecast[0], min: null, max: null, precipitationProbability: null }]}
+        unit="celsius"
+      />,
+    );
+
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByRole('article', { name: 'Hoje: Céu limpo' })).toBeInTheDocument();
+    expect(screen.getAllByText('—')).toHaveLength(3);
+  });
 });

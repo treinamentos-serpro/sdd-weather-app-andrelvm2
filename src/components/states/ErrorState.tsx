@@ -15,7 +15,7 @@ export default function ErrorState({ message, onRetry }: ErrorStateProps) {
       </h2>
       <p className="mt-2 text-slate-200">{message}</p>
       <button
-        className="mt-5 bg-accent-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2 focus:ring-offset-night-900"
+        className="mt-5 bg-accent-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2 focus:ring-offset-night-900 active:bg-accent-600"
         onClick={onRetry}
         type="button"
       >

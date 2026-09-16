@@ -39,6 +39,28 @@ describe('CurrentWeather', () => {
       />,
     );
 
-    expect(screen.getAllByText('Indisponível')).toHaveLength(2);
+    expect(screen.getAllByText('—')).toHaveLength(1);
+    expect(screen.getByText('Indisponível')).toBeInTheDocument();
+  });
+
+  it('sinaliza a temperatura ausente como indisponível', () => {
+    render(
+      <CurrentWeather city={city} current={{ ...current, temperature: null }} unit="celsius" />,
+    );
+
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  it('não exibe NaN para números não finitos', () => {
+    render(
+      <CurrentWeather
+        city={city}
+        current={{ ...current, temperature: Number.NaN, humidity: Number.POSITIVE_INFINITY }}
+        unit="celsius"
+      />,
+    );
+
+    expect(screen.queryByText(/NaN|Infinity/)).not.toBeInTheDocument();
+    expect(screen.getAllByText('—')).toHaveLength(2);
   });
 });

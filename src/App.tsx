@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CurrentWeather from './components/CurrentWeather';
 import ForecastList from './components/ForecastList';
 import SearchBar from './components/SearchBar';
@@ -12,6 +12,13 @@ import type { TemperatureUnit } from './lib/temperature';
 export default function App() {
   const { status, data, error, search, retry } = useWeather();
   const [unit, setUnit] = useState<TemperatureUnit>('celsius');
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (status !== 'idle' && status !== 'loading') {
+      resultsRef.current?.focus();
+    }
+  }, [status]);
 
   function renderContent() {
     switch (status) {
@@ -46,7 +53,10 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen bg-night-900 px-6 py-8 text-white sm:py-12">
+    <main
+      aria-busy={status === 'loading'}
+      className="min-h-screen bg-night-900 px-6 py-8 text-white sm:py-12"
+    >
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-col gap-6 border-b border-white/10 pb-8 lg:flex-row lg:items-center">
           <div className="shrink-0">
@@ -58,7 +68,16 @@ export default function App() {
           </div>
           <UnitToggle onChange={setUnit} unit={unit} />
         </header>
-        <div className="mt-8">{renderContent()}</div>
+        <div
+          aria-busy={status === 'loading'}
+          aria-label="Resultado da consulta"
+          className="mt-8 scroll-mt-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-4 focus-visible:ring-offset-night-900"
+          ref={resultsRef}
+          role="region"
+          tabIndex={-1}
+        >
+          {renderContent()}
+        </div>
       </div>
     </main>
   );

@@ -30,7 +30,7 @@ describe('state components', () => {
     render(<EmptyState />);
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Nenhuma localidade encontrada' }),
+      screen.getByRole('heading', { level: 2, name: 'Nenhuma cidade encontrada' }),
     ).toBeInTheDocument();
     expect(
       screen.getByText('Verifique o nome informado e tente pesquisar novamente.'),

@@ -25,7 +25,7 @@ describe('App', () => {
     vi.spyOn(weatherService, 'searchCities').mockResolvedValue([
       { id: 1, name: 'Recife', country: 'Brasil', latitude: -8.05, longitude: -34.9 },
     ]);
-    vi.spyOn(weatherService, 'getWeather').mockResolvedValue({
+    const getWeather = vi.spyOn(weatherService, 'getWeather').mockResolvedValue({
       city: { id: 1, name: 'Recife', country: 'Brasil', latitude: -8.05, longitude: -34.9 },
       current: {
         temperature: 28,
@@ -50,10 +50,13 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
 
     await waitFor(() => expect(screen.getAllByText('28 °C')).toHaveLength(2));
+    expect(screen.getByRole('region', { name: 'Resultado da consulta' })).toHaveFocus();
 
     await user.click(screen.getByRole('button', { name: 'Fahrenheit' }));
 
     expect(screen.getAllByText('82 °F')).toHaveLength(2);
+    expect(screen.queryByText('28 °C')).not.toBeInTheDocument();
+    expect(getWeather).toHaveBeenCalledOnce();
   });
 
   it('renderiza loading enquanto a busca está em andamento', async () => {
@@ -68,6 +71,11 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Carregando informações meteorológicas...',
     );
+    expect(screen.getByRole('main')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('region', { name: 'Resultado da consulta' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
   });
 
   it('renderiza empty quando a busca não encontra localidades', async () => {
@@ -79,9 +87,8 @@ describe('App', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Pesquisar localidade' }), 'Inexistente');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Nenhuma localidade encontrada' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Nenhuma cidade encontrada' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Resultado da consulta' })).toHaveFocus();
   });
 
   it('renderiza erro e chama retry ao tentar novamente', async () => {
@@ -97,12 +104,11 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Falha de rede.');
+    expect(screen.getByRole('region', { name: 'Resultado da consulta' })).toHaveFocus();
 
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Nenhuma localidade encontrada' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Nenhuma cidade encontrada' })).toBeVisible();
     expect(searchCities).toHaveBeenCalledTimes(2);
   });
 });

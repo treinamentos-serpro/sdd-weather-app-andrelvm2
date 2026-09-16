@@ -35,6 +35,32 @@ describe('SearchBar', () => {
     expect(onSearch).not.toHaveBeenCalled();
   });
 
+  it('não envia busca quando o campo está vazio', async () => {
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+
+    render(<SearchBar disabled={false} onSearch={onSearch} />);
+
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    expect(onSearch).not.toHaveBeenCalled();
+  });
+
+  it('preserva caracteres especiais no termo enviado', async () => {
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+
+    render(<SearchBar disabled={false} onSearch={onSearch} />);
+
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Pesquisar localidade' }),
+      'São José-dos Campos',
+    );
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    expect(onSearch).toHaveBeenCalledWith('São José-dos Campos');
+  });
+
   it('desabilita os controles durante uma operação em andamento', () => {
     render(<SearchBar disabled={true} onSearch={vi.fn()} />);
 
